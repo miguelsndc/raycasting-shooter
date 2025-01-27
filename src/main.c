@@ -1,9 +1,13 @@
-#include <stdio.h>
+#include "tigr.h"
+#include "typedefs.h"
+#include <math.h>
 
 #define mapWidth 24
 #define mapHeight 24
 #define screenWidth 640
 #define screenHeight 480
+
+inline f64 len(f64 ax, f64 ay) { return sqrt(ax * ax + ay * ay); }
 
 int worldMap[mapWidth][mapHeight] = {
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
@@ -31,4 +35,14 @@ int worldMap[mapWidth][mapHeight] = {
     {1, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}};
 
-int main() {}
+int main(int argc, char *argv[]) {
+  Tigr *screen = tigrWindow(320, 240, "Hello", 0);
+  while (!tigrClosed(screen)) {
+    tigrClear(screen, tigrRGB(0x80, 0x90, 0xa0));
+    tigrPrint(screen, tfont, 120, 110, tigrRGB(0xff, 0xff, 0xff),
+              "Hello, world.");
+    tigrUpdate(screen);
+  }
+  tigrFree(screen);
+  return 0;
+}
