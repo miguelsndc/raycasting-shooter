@@ -1,1 +1,0 @@
-gcc -o main src/main.c src/tigr.c -lopengl32 -lgdi32
