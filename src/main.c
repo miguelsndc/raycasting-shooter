@@ -5,13 +5,12 @@
 
 #define map_width 24
 #define map_height 24
-#define screen_width 320
-#define screen_height 240
+#define screen_width 640
+#define screen_height 480
 
-#define NORM(_x, _y) (sqrt(((_x) * (_x)) + ((_y) * (_y))))
-#define MIN(_x, _y) (((_x) < (_y)) ? (_x) : (_y))
-#define MAX(_x, _y) (((_x) > (_y)) ? (_y) : (_x))
-#define CLAMP(_x, _a, _b) (MAX(_a, (MIN(_x, _b))))
+static inline int32_t min(int32_t x, int32_t y) { return (x < y) ? x : y; }
+
+static inline int32_t max(int32_t x, int32_t y) { return (x > y) ? x : y; }
 
 typedef float f32;
 typedef double f64;
@@ -62,12 +61,12 @@ int32_t main() {
   while (!tigrClosed(screen)) {
     tigrClear(screen, tigrRGB(0x0, 0x0, 0x0));
 
-    for (uint32_t x = 0; x < screen_width; x++) {
+    for (int32_t x = 0; x < screen_width; x++) {
       f64 camera_x = 2 * x / (f64)screen_width - 1;
       f64 raydir_x = dir_x + plane_x * camera_x;
       f64 raydir_y = dir_y + plane_y * camera_x;
 
-      uint32_t map_x = (uint32_t)pos_x, map_y = (uint32_t)pos_y;
+      int32_t map_x = (int32_t)pos_x, map_y = (int32_t)pos_y;
 
       // arbitrarily large 1e30 to avoid division by zero
       f64 dist_dx = raydir_x == 0 ? 1e30 : fabs(1.0 / raydir_x);
@@ -112,9 +111,9 @@ int32_t main() {
         perpwall_dist = (side_dist_y - dist_dy);
 
       int32_t line_height = (int32_t)(screen_height / perpwall_dist);
-      int32_t draw_start = MAX(-line_height / 2 + screen_height / 2, 0);
+      int32_t draw_start = max(-line_height / 2 + screen_height / 2, 0);
       int32_t draw_end =
-          MIN(line_height / 2 + screen_height / 2, screen_height - 1);
+          min(line_height / 2 + screen_height / 2, screen_height - 1);
 
       TPixel color;
       switch (worldMap[map_x][map_y]) {
@@ -135,36 +134,53 @@ int32_t main() {
           break;
       }
 
-      for (uint32_t dy = draw_start; dy <= draw_end; dy++) {
+      for (int32_t dy = draw_start; dy < draw_end; dy++) {
         screen->pix[dy * screen->w + x].r = color.r;
         screen->pix[dy * screen->w + x].g = color.g;
-        screen->pix[dy * screen->w + x].b = color.g;
+        screen->pix[dy * screen->w + x].b = color.b;
         screen->pix[dy * screen->w + x].a = color.a;
       }
     }
 
     old_time = time;
     time = tigrTime();
-    f64 dt_seconds = (time - old_time) / 1000.0;
+    f64 dt_seconds = fabs((time - old_time) / 1000.0);
     f64 fps = (1.0 / dt_seconds);
 
-    f64 move_speed = dt_seconds * 5.0;      // sq/second
-    f64 rotation_speed = dt_seconds * 3.0;  // rad/second
+    f64 move_speed = dt_seconds * (1e5);      // sq/second
+    f64 rotation_speed = dt_seconds * (1e5);  // rad/second
 
-    if (tigrKeyDown(screen, 'W')) {
-      printf("w down\n");
-      int32_t dy_up = pos_y + dir_y * move_speed;
-      int32_t dx_up = pos_x + dir_x * move_speed;
-
-      if (worldMap[(int32_t)pos_x][dy_up] == 0) pos_y = dy_up;
-      if (worldMap[dx_up][(int32_t)(pos_y)] == 0) pos_x = dx_up;
+    if ( tigrKeyHeld(screen, 'W')) {      
+      printf("pos: (%f, %f)\n", pos_x, pos_y);
+      if (worldMap[(uint32_t)pos_x][(uint32_t)(pos_y + dir_y * move_speed)] == 0) pos_y += dir_y * move_speed;
+      if (worldMap[(uint32_t)(pos_x + dir_x * move_speed)][(uint32_t)(pos_y)] == 0) pos_x += dir_x * move_speed;
     }
-    if (tigrKeyDown(screen, 'S')) {
-      int32_t dy_down = pos_y - dir_y * move_speed;
-      int32_t dx_down = pos_x - dir_x * move_speed;
+    if ( tigrKeyHeld(screen, 'S')) {
+      printf("pos: (%f, %f)\n", pos_x, pos_y);
+      if (worldMap[(uint32_t)pos_x][(uint32_t)(pos_y - dir_y * move_speed)] == 0) pos_y -= dir_y * move_speed;
+      if (worldMap[(uint32_t)(pos_x - dir_x * move_speed)][(uint32_t)(pos_y)] == 0) pos_x -= dir_x * move_speed;
+    }
 
-      if (worldMap[(int32_t)pos_x][dy_down] == 0) pos_y = dy_down;
-      if (worldMap[dx_down][(int32_t)(pos_y)] == 0) pos_x = dx_down;
+    if  (tigrKeyHeld(screen, 'A')) {
+      printf("a down\n");
+      f64 old_dir = dir_x;
+      f64 old_plane = plane_x;
+
+      dir_x = dir_x * cos(rotation_speed) - dir_y * sin(rotation_speed);
+      dir_y = old_dir * sin(rotation_speed) + dir_y * cos(rotation_speed);
+      plane_x = plane_x * cos(rotation_speed) - plane_y * sin(rotation_speed);
+      plane_y = old_plane * sin(rotation_speed) + plane_y * cos(rotation_speed);
+    }
+    if  (tigrKeyHeld(screen, 'D')) {
+      printf("d down\n");
+      f64 old_dir = dir_x;
+      f64 old_plane = plane_x;
+
+      dir_x = dir_x * cos(-rotation_speed) - dir_y * sin(-rotation_speed);
+      dir_y = old_dir * sin(-rotation_speed) + dir_y * cos(-rotation_speed);
+      plane_x = plane_x * cos(-rotation_speed) - plane_y * sin(-rotation_speed);
+
+      plane_y = old_plane * sin(-rotation_speed) + plane_y * cos(-rotation_speed);
     }
 
     tigrUpdate(screen);
